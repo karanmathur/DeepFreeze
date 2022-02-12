@@ -78,7 +78,7 @@ def compute_activations(input_activations, layer, data_format):
 			elif layer.op_type == AVG_POOL_2D:
 					net = tf.nn.avg_pool(
 							value=layer_input,
-							ksize=tuple_to_tf(layer.strides),
+							ksize=tuple_to_tf(layer.kernel_size),
 							strides=tuple_to_tf(layer.strides),
 							padding=layer.padding
 					)
@@ -160,7 +160,8 @@ if __name__ == "__main__":
 	input_shape = layer.input_shapes[0]
 	
 	if FLAGS.input_activation_filepath.lower().endswith((".png", ".jpg", ".jpeg")):
-			activations = cv2.imread(FLAGS.input_activation_filepath, mode="RGB")[np.newaxis, :]
+			activations = cv2.imread(FLAGS.input_activation_filepath, cv2.IMREAD_COLOR)[np.newaxis, :]
+			#activations = cv2.imread(FLAGS.input_activation_filepath)
 	elif FLAGS.input_activation_filepath.lower().endswith(".npy"):
 			activations = np.load(FLAGS.input_activation_filepath)[np.newaxis, :]
 	elif FLAGS.input_activation_filepath.lower().endswith(".txt"):
