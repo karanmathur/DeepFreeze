@@ -1,4 +1,4 @@
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (!rstn) begin
         output_act <= '0;
         ready      <= '0;

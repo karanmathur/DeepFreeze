@@ -9,7 +9,7 @@ module MODULE_NAME (
 
 logic valid_ff;
 logic [INPUT_ACT_NBITS-1:0] input_act_ff;
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (!rstn) begin
         valid_ff       <= '0;
         input_act_ff   <= '0;

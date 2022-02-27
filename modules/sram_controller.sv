@@ -1,3 +1,4 @@
+
 module sram_controller
 #(
     parameter KER_SIZE    = 3,
@@ -39,7 +40,7 @@ logic [3-1:0] row_stride_counter_nxt;
 logic [KER_SIZE-1:0]top_pad_shift;
 logic [KER_SIZE-1:0] init_top_pad_mask;
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (!rstn) begin
         row_ptr 			      <= PAD;//top padding
         global_row_ptr 		  <= 'd0;
@@ -80,7 +81,7 @@ assign row_stride_counter_nxt = (col_ptr==(INPUT_X_DIM-1) && valid && init_row_c
 generate
 if(PAD>0)
 	begin
-		always_ff @(posedge clk or negedge rstn) 
+		always_ff @(posedge clk) 
 			begin
 				if (!rstn) 
 					top_pad_en   <= 1'd0; 
@@ -88,7 +89,7 @@ if(PAD>0)
 					top_pad_en   <= valid && col_ptr_done; 
 			end
 			
-		always_ff @(posedge clk or negedge rstn) 
+		always_ff @(posedge clk) 
 			begin
 				if (!rstn) 
 					top_pad_mask <= init_top_pad_mask; 
@@ -114,7 +115,7 @@ endgenerate
 generate
 	for (i=0;i<KER_SIZE;i++) 
 	begin
-		always_ff @(posedge clk or negedge rstn) begin
+		always_ff @(posedge clk) begin
 			if (!rstn) 
 				init_top_pad_mask[i] <= i<PAD ? 1'b1 : 1'd0; 
 			else 
@@ -124,3 +125,5 @@ generate
 endgenerate
 
 endmodule
+
+

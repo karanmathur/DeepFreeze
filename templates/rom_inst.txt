@@ -1,3 +1,9 @@
 logic [ROM_DW-1:0] Q_NAME;
-singleport_rom # (.INIT_FILE("INIT_FILE_NAME"),.WORDS(ROM_WORDS),.A_WIDTH(ROM_AW),.D_WIDTH(ROM_DW))
-    INST_NAME (.q(Q_NAME),.address(RD_ADDR),.clock  (clk));
+ram_single # (.WORDS(ROM_WORDS),.A_WIDTH(ROM_AW),.D_WIDTH(ROM_DW))
+    INST_NAME (.q(Q_NAME),.address(RD_ADDR),.clk(clk),.d(0),.we(0));
+//assign Q_NAME = ROM_DW'h1234;
+//always@(posedge clk) begin 
+//Q_NAME <= ROM_DW'h1234; 
+//end
+// singleport_rom # (.INIT_FILE("INIT_FILE_NAME"),.WORDS(ROM_WORDS),.A_WIDTH(ROM_AW),.D_WIDTH(ROM_DW))
+//    INST_NAME (.q(Q_NAME),.address(RD_ADDR),.clock  (clk));

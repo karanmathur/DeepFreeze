@@ -1,6 +1,6 @@
 MODEL_NAME="mobilenet_trained"
 INPUT_LAYER_NAME="conv0"
-OUTPUT_LAYER_NAME="logits"
+OUTPUT_LAYER_NAME="conv4_pw"
 
 META_FILEPATH="${PWD}/examples/$MODEL_NAME/model_folded.ckpt.meta"
 CHECKPOINT_FILEPATH="${PWD}/examples/$MODEL_NAME/model_folded.ckpt"

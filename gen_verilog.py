@@ -101,8 +101,7 @@ class VerilogGenerator():
 			input_act_idx_high = input_act_idx_low + num_bits_per_input_fmap
 			f.write("logic [%d:0] %s;\n" % (num_bits_per_input_fmap-1, input_fmap_name))
 			if pointwise_flag==0:
-				f.write("assign %s = %s[%d];\n" % (input_fmap_name, self.layer_act_signal_name,
-												cur_input_fmap))
+				f.write("assign %s = %s[%d:%d];\n" % (input_fmap_name, self.layer_act_signal_name,input_act_idx_high-1, input_act_idx_low))
 			else:
 				f.write("assign %s = %s[%d:%d];\n" % (input_fmap_name, self.layer_act_signal_name,
 												input_act_idx_high-1, input_act_idx_low))
@@ -390,7 +389,7 @@ class VerilogGenerator():
 		if bram_mult:
 			num_delay = num_delay + 1 # additional delay for bram read
 		self.generate_valid_ready_delay (f,num_delay)
-		self.layer_act_signal_name = "dw_conv_mac"
+		self.layer_act_signal_name = "conv_mac"
 		
 		
 	def __gen_bias_add_array(self, f, biases):
@@ -693,13 +692,13 @@ class VerilogGenerator():
 			for dc in xrange (1,num_delay,1):
 				valid_name = "valid_D" + str(int(dc))
 				lines = "logic " + valid_name + ";\n"
-				lines += "always_ff @(posedge clk or negedge rstn) begin\n"
+				lines += "always_ff @(posedge clk) begin\n"
 				lines += "\tif (rstn == 0) " + valid_name + "<= 0 ;\n"
 				lines += "\telse " + valid_name + "<=" + prev_valid_name + ";\n"
 				lines += "end\n"
 				f.writelines (lines)
 				prev_valid_name = valid_name
-			lines = "always_ff @(posedge clk or negedge rstn) begin\n"
+			lines = "always_ff @(posedge clk) begin\n"
 			lines += "\tif (rstn == 0) ready <= 0 ;\n"
 			lines += "\telse ready <=" + prev_valid_name + ";\n"
 			lines += "end\n"

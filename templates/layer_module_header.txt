@@ -2,23 +2,23 @@ module MODULE_NAME (
     input logic clk,
     input logic rstn,
     input logic valid,
-    input logic [INPUT_ACT_NBITS-1:0] input_act[NUM_INPUT_FMAPS-1:0],
+    input logic [NUM_INPUT_FMAPS*INPUT_ACT_NBITS-1:0] input_act,
     output logic [OUTPUT_ACT_NBITS-1:0] output_act,
     output logic ready
 );
-
+logic we; 
+logic [NUM_INPUT_FMAPS*INPUT_ACT_NBITS-1:0] input_act_ff;
 genvar i;
 generate
 for (i=0;i<NUM_INPUT_FMAPS;i++)
     begin
-        always_ff @(posedge clk or negedge rstn) begin
+        always_ff @(posedge clk) begin
             if (rstn == 0) begin
-                input_act_ff[i] <= '0;
+                input_act_ff[(i+1)*INPUT_ACT_NBITS-1:i*INPUT_ACT_NBITS] <= '0;
             end
             else begin
-                input_act_ff[i] <= input_act[i];
+                input_act_ff[(i+1)*INPUT_ACT_NBITS-1:i*INPUT_ACT_NBITS] <= input_act[(i+1)*INPUT_ACT_NBITS-1:i*INPUT_ACT_NBITS];
             end
         end
     end
 endgenerate
-

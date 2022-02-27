@@ -1,21 +1,23 @@
+
 module avg_pool_2d
 #(
     parameter NBITS = 32,
     parameter NFMAPS = 32,
-    parameter KER_SIZE = 2
+    parameter KER_SIZE = 7
 )
 (
     input logic clk,
     input logic rstn,
     input logic valid,
-    input logic [NBITS*KER_SIZE*KER_SIZE-1:0] input_act [NFMAPS-1:0],
+    input logic [NFMAPS*NBITS*KER_SIZE*KER_SIZE-1:0] input_act,
+    //input logic [NBITS*KER_SIZE*KER_SIZE-1:0] input_act [NFMAPS-1:0],
     output logic [NBITS*NFMAPS-1:0] output_act,
     output logic ready
 );
 
-logic [NBITS*KER_SIZE*KER_SIZE-1:0] input_act_ff [NFMAPS-1:0];
+logic [NFMAPS*NBITS*KER_SIZE*KER_SIZE-1:0] input_act_ff;
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (rstn == 0) begin
         ready <= '0;
     end
@@ -28,12 +30,12 @@ genvar i;
 generate
 for (i = 0; i < NFMAPS; i++) begin
 
-    always_ff @(posedge clk or negedge rstn) begin
+    always_ff @(posedge clk) begin
         if (rstn == 0) begin
-            input_act_ff[i] <= '0;
+            input_act_ff[(i+1)*NBITS*KER_SIZE*KER_SIZE-1:i*NBITS*KER_SIZE*KER_SIZE] <= '0;
         end
         else begin
-            input_act_ff[i] <= input_act[i];
+            input_act_ff[(i+1)*NBITS*KER_SIZE*KER_SIZE-1:i*NBITS*KER_SIZE*KER_SIZE] <= input_act[(i+1)*NBITS*KER_SIZE*KER_SIZE-1:i*NBITS*KER_SIZE*KER_SIZE];
         end
     end
 
@@ -48,7 +50,7 @@ generate
             .NBITS (NBITS),
             .KER_SIZE (KER_SIZE)
         ) avg_pool_2d_slice_inst (
-            .input_act (input_act_ff[i]),
+            .input_act (input_act_ff[(i+1)*NBITS*KER_SIZE*KER_SIZE-1:i*NBITS*KER_SIZE*KER_SIZE]),
             .output_act (output_act[(i+1)*NBITS-1:(i*NBITS)])
         );
 			end
@@ -58,7 +60,7 @@ generate
             .NBITS (NBITS),
             .KER_SIZE (KER_SIZE)
         ) avg_pool_7d_slice_inst (
-            .input_act (input_act_ff[i]),
+            .input_act (input_act_ff[(i+1)*NBITS*KER_SIZE*KER_SIZE-1:i*NBITS*KER_SIZE*KER_SIZE]),
             .output_act (output_act[(i+1)*NBITS-1:(i*NBITS)])
         );
 			end
@@ -87,7 +89,7 @@ always_comb begin
         $signed(input_act[2*NBITS-1:1*NBITS]) +
         $signed(input_act[3*NBITS-1:2*NBITS]) +
         $signed(input_act[4*NBITS-1:3*NBITS]);
-    output_act = $signed(sum) / 4;
+    output_act = $signed(sum) >>> 2;
 end
 
 endmodule
@@ -95,15 +97,16 @@ endmodule
 module avg_pool_7d_slice
 #(
     parameter NBITS = 32,
-    parameter KER_SIZE = 2
+    parameter KER_SIZE = 7
 )
 (
     input logic [NBITS*KER_SIZE*KER_SIZE-1:0] input_act,
     output logic [NBITS-1:0] output_act
 );
 
-logic [64-1:0] sum;
-logic [32-1:0] average;
+logic [(NBITS+6)-1:0] sum;
+logic [(2*(NBITS+6)-16)-1:0] average;
+ logic [2*(NBITS+6)-1:0] intermediate;
 
 always_comb begin
     sum =
@@ -156,10 +159,47 @@ always_comb begin
         $signed(input_act[47*NBITS-1:46*NBITS]) +
         $signed(input_act[48*NBITS-1:47*NBITS]) +
         $signed(input_act[49*NBITS-1:48*NBITS]) ;
-    average = $signed(sum) / 16'd 49;
+   // average = $signed(sum) / 16'd 49;
+//   average = ($signed(sum)*1337) >>> 16;  // for divide by 49 
 		// just used for synthesis purpose, delete below line later
-		output_act = average[15:0] + average[31:16];
+	//	output_act = average[15:0] + average[31:16];
+output_act = average[((2*(NBITS+6)-16)/2)-1:0] + average[(2*(NBITS+6)-16)-1:((2*(NBITS+6)-16)/2)];
+
 end
 
+//array_multiplier array_multiplier_inst(sum,64'd1337,intermediate);
+mult #(.width(NBITS+6)) mult_inst (sum[(NBITS+6)-1:0],(NBITS+6)'d1337,intermediate);
+
+assign average = intermediate>>>16;
+
 endmodule
+
+module mult #(parameter width = 38) (a,b,y); 
+
+input [width-1:0] a,b;
+output logic [2*width -1:0] y;
+assign y = a*b;
+
+endmodule
+/*
+module array_multiplier(a, b, y);
+
+parameter width = 64;
+input [width-1:0] a, b;
+output [width-1:0] y;
+
+wire [width*width-1:0] partials;
+
+genvar i;
+assign partials[width-1 : 0] = a[0] ? b : 0;
+generate for (i = 1; i < width; i = i+1) begin:gen
+    assign partials[width*(i+1)-1 : width*i] = (a[i] ? b << i : 0) +
+                                   partials[width*i-1 : width*(i-1)];
+end endgenerate
+
+assign y = partials[width*width-1 : width*(width-1)];
+
+endmodule
+*/
+
 

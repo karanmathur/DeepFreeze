@@ -1,3 +1,4 @@
+
 module max_pool_2d
 #(
     parameter NBITS = 32,
@@ -14,7 +15,7 @@ module max_pool_2d
 );
 
 logic [NBITS*KER_SIZE*KER_SIZE*NFMAPS-1:0] input_act_ff;
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (rstn == 0) begin
         input_act_ff <= '0;
         ready <= '0;
@@ -61,3 +62,5 @@ always_comb begin
 end
 
 endmodule
+
+

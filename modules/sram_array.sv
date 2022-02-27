@@ -1,3 +1,4 @@
+
 module sram_array_k3
 #(
     parameter KER_SIZE = 3,
@@ -15,10 +16,12 @@ module sram_array_k3
     output logic [(KER_SIZE-1)*DW-1:0] q
 );
 
-logic [DW-1:0] q_wire [KER_SIZE-1:0];
+//logic [DW-1:0] q_wire [KER_SIZE-1:0];
+logic [KER_SIZE*DW-1:0] q_wire; 
+
 logic [KER_SIZE-1:0] write_en_D1;
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if(!rstn) begin
         write_en_D1 <= '0;
     end
@@ -40,7 +43,7 @@ generate
             .gwen (!(wen[i])),
             .a (a),
             .d (d),
-            .q (q_wire[i])
+            .q (q_wire[(i+1)*DW-1:i*DW])
         );
     end
 endgenerate
@@ -48,9 +51,9 @@ endgenerate
 // reorder rows
 always_comb begin
     case (1'b1)
-        write_en_D1[0] : q = {q_wire[2],q_wire[1]};
-        write_en_D1[1] : q = {q_wire[0],q_wire[2]};
-        write_en_D1[2] : q = {q_wire[1],q_wire[0]};
+        write_en_D1[0] : q = {q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW]};
+        write_en_D1[1] : q = {q_wire[DW-1:0],q_wire[3*DW-1:2*DW]};
+        write_en_D1[2] : q = {q_wire[2*DW-1:DW],q_wire[DW-1:0]};
         default :        q = '0;
     endcase
 end
@@ -74,10 +77,12 @@ module sram_array_k5
     output logic [(KER_SIZE-1)*DW-1:0] q
 );
 
-logic [DW-1:0] q_wire [KER_SIZE-1:0];
+//logic [DW-1:0] q_wire [KER_SIZE-1:0];
+logic [KER_SIZE*DW-1:0] q_wire; 
+
 logic [KER_SIZE-1:0] write_en_D1; // delayed write enable because of 1 cycle delay of sram
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if(!rstn) begin
         write_en_D1 <= '0;
     end
@@ -99,7 +104,7 @@ generate
             .gwen (!(wen[i])),
             .a (a),
             .d (d),
-            .q (q_wire[i])
+            .q (q_wire[(i+1)*DW-1:i*DW])
         );
     end
 endgenerate
@@ -107,11 +112,11 @@ endgenerate
 // reorder rows
 always_comb begin
     case (1'b1)
-        write_en_D1[0] : q = {q_wire[4],q_wire[3],q_wire[2],q_wire[1]};
-        write_en_D1[1] : q = {q_wire[0],q_wire[4],q_wire[3],q_wire[2]};
-        write_en_D1[2] : q = {q_wire[1],q_wire[0],q_wire[4],q_wire[3]};
-        write_en_D1[3] : q = {q_wire[2],q_wire[1],q_wire[0],q_wire[4]};
-        write_en_D1[4] : q = {q_wire[3],q_wire[2],q_wire[1],q_wire[0]};
+        write_en_D1[0] : q = {q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW]};
+        write_en_D1[1] : q = {q_wire[DW-1:0],q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW]};
+        write_en_D1[2] : q = {q_wire[2*DW-1:DW],q_wire[DW-1:0],q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW]};
+        write_en_D1[3] : q = {q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW],q_wire[DW-1:DW],q_wire[5*DW-1:4*DW]};
+        write_en_D1[4] : q = {q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW],q_wire[DW-1:0]};
         default :        q = '0;
     endcase
 end
@@ -135,10 +140,12 @@ module sram_array_k7
     output logic [(KER_SIZE-1)*DW-1:0] q
 );
 
-logic [DW-1:0] q_wire [KER_SIZE-1:0];
+//logic [DW-1:0] q_wire [KER_SIZE-1:0];
+logic [KER_SIZE*DW-1:0] q_wire; 
+
 logic [KER_SIZE-1:0] write_en_D1; // delayed write enable because of 1 cycle delay of sram
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if(!rstn) begin
         write_en_D1 <= '0;
     end
@@ -160,21 +167,21 @@ generate
             .gwen (!(wen[i])),
             .a (a),
             .d (d),
-            .q (q_wire[i])
+            .q (q_wire[(i+1)*DW-1:i*DW])
         );
     end
 endgenerate
 
 // reorder rows
 always_comb begin
-    case (1'b1)
-        write_en_D1[0] : q = {q_wire[6],q_wire[5],q_wire[4],q_wire[3].q_wire[2],q_wire[1]};
-        write_en_D1[1] : q = {q_wire[0],q_wire[6],q_wire[5],q_wire[4],q_wire[3].q_wire[2]};
-        write_en_D1[2] : q = {q_wire[1],q_wire[0],q_wire[6],q_wire[5],q_wire[4],q_wire[3]};
-        write_en_D1[3] : q = {q_wire[2],q_wire[1],q_wire[0],q_wire[6],q_wire[5],q_wire[4]};
-        write_en_D1[4] : q = {q_wire[3],q_wire[2],q_wire[1],q_wire[0],q_wire[6],q_wire[5]};
-        write_en_D1[5] : q = {q_wire[4],q_wire[3],q_wire[2],q_wire[1],q_wire[0],q_wire[6]};
-        write_en_D1[6] : q = {q_wire[5],q_wire[4],q_wire[3],q_wire[2],q_wire[1],q_wire[0]};
+    case (1'b1) 
+        write_en_D1[0] : q = {q_wire[7*DW-1:6*DW],q_wire[6*DW-1:5*DW],q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW]};
+        write_en_D1[1] : q = {q_wire[DW-1:0],q_wire[7*DW-1:6*DW],q_wire[6*DW-1:5*DW],q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW]};
+        write_en_D1[2] : q = {q_wire[2*DW-1:DW],q_wire[DW-1:0],q_wire[7*DW-1:6*DW],q_wire[6*DW-1:5*DW],q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW]};
+        write_en_D1[3] : q = {q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW],q_wire[DW-1:0],q_wire[7*DW-1:6*DW],q_wire[6*DW-1:5*DW],q_wire[5*DW-1:4*DW]};
+        write_en_D1[4] : q = {q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW],q_wire[DW-1:0],q_wire[7*DW-1:6*DW],q_wire[6*DW-1:5*DW]};
+        write_en_D1[5] : q = {q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW],q_wire[DW-1:0],q_wire[7*DW-1:6*DW]};
+        write_en_D1[6] : q = {q_wire[6*DW-1:5*DW],q_wire[5*DW-1:4*DW],q_wire[4*DW-1:3*DW],q_wire[3*DW-1:2*DW],q_wire[2*DW-1:DW],q_wire[DW-1:0]};
         default :        q = '0;
     endcase
 end
@@ -198,10 +205,12 @@ module sram_array_k2
     output logic [(KER_SIZE-1)*DW-1:0] q
 );
 
-logic [DW-1:0] q_wire [KER_SIZE-1:0];
+//logic [DW-1:0] q_wire [KER_SIZE-1:0];
+logic [KER_SIZE*DW-1:0] q_wire; 
+
 logic [KER_SIZE-1:0] write_en_D1;
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk ) begin
     if(!rstn) begin
         write_en_D1 <= '0;
     end
@@ -223,7 +232,7 @@ generate
             .gwen (!(wen[i])),
             .a (a),
             .d (d),
-            .q (q_wire[i])
+            .q (q_wire[(i+1)*DW-1:i*DW])
         );
     end
 endgenerate
@@ -244,7 +253,7 @@ module array
 #(
     parameter DW = 32,
     parameter NW = 32,
-    parameter AW = 10 
+    parameter AW = $clog2(NW) 
 ) 
 (
     input logic clk,
@@ -278,3 +287,19 @@ always @(posedge clk) begin
 end
 
 endmodule
+
+module ram_single #(parameter WORDS = 256, parameter A_WIDTH =8, parameter D_WIDTH=12) (q, address, d, we, clk);
+   output logic [D_WIDTH-1:0] q;
+   input [D_WIDTH-1:0] d;
+   input [A_WIDTH:0] address;
+   input we, clk;
+   reg [D_WIDTH-1:0] mem [WORDS-1:0];
+    always @(posedge clk) begin
+        if (we)
+            mem[address] <= d;
+        q <= mem[address];
+   end
+endmodule
+
+
+

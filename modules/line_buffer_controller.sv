@@ -1,3 +1,4 @@
+
 module line_buffer_controller
 #(
     parameter KER_SIZE    = 3,
@@ -26,7 +27,7 @@ logic [7:0] global_col_ptr_nxt;
 logic padrow_complete;
 logic row_complete_D1;
 logic row_complete_D2;
-always_ff @(posedge clk or negedge rstn) 
+always_ff @(posedge clk) 
 begin
 	if (!rstn) 
 	begin
@@ -49,7 +50,7 @@ assign padrow_complete = row_complete_D1;
 
 
 // initialize counters
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (!rstn) begin
         col_ptr 			      <= PAD;//Left padding
         init_col_ptr 		    <= PAD;//Left padding
@@ -80,7 +81,7 @@ generate
 	if(PAD>0) 
 	begin
 		logic [PAD-1:0] shifted_left_pad_mask;
-		always_ff @(posedge clk or negedge rstn) 
+		always_ff @(posedge clk) 
 		begin
 			if (!rstn) 
 				shifted_left_pad_mask <= {PAD{1'b1}}; 
@@ -107,7 +108,7 @@ logic right_pad_en;
 logic [2:0] right_pad_counter;
 logic [KER_SIZE-1:0]right_pad_shift;
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (!rstn) begin
         right_pad_en <= '0;
     end
@@ -119,7 +120,7 @@ always_ff @(posedge clk or negedge rstn) begin
     end
 end
 
-always_ff @(posedge clk or negedge rstn) begin
+always_ff @(posedge clk) begin
     if (!rstn) begin
         right_pad_counter <= '0;
     end
@@ -140,7 +141,7 @@ generate
 	if(PAD>0) 
 	begin
 		logic [KER_SIZE-1:0] right_pad_mask_wire;
-		always_ff @(posedge clk or negedge rstn) 
+		always_ff @(posedge clk) 
 		begin
 			if (!rstn) 
 				right_pad_mask_wire <=  {1'b1,{KER_SIZE-1{1'b0}}};
@@ -160,3 +161,6 @@ generate
 	end
 endgenerate
 endmodule
+
+
+
