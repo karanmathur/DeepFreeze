@@ -166,8 +166,9 @@ class Layer():
 		self.name = name
 		self.op_type = self.__get_op_type()
 		self.adder_pipeline = 1 # with pipeline
-		self.bram_mult =1 # no bram multipliers
+		self.bram_mult =0 # no bram multipliers
 		self.adder_tree = 1 # with adder_tree
+		self.use_dsp = 1 # for using int_sop_4 mode of dsp 
 		self.input_names = self.__get_input_layer_names()
 		self.output_names = self.__get_output_layer_names()
 		self.input_shapes = self.__get_input_shapes()

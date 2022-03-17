@@ -3,7 +3,6 @@
 """
 Author: Patrick Hansen
 Project: FixyNN
-
 Contains FixyVerilogGenerator class definition
 """
 
@@ -21,6 +20,8 @@ from graph import *
 from template_reader import *
 
 MODULES_DIRECTORY = os.path.join(os.path.dirname(__file__), "modules/")
+
+#use_dsp=1
 
 def saturate(x, nint, nfrac):
 	"""Clip a value to the range of representable fixed-point values"""
@@ -141,7 +142,7 @@ class VerilogGenerator():
 			f.write(";\n\n")
 		self.layer_act_signal_name = "dense_mac"
 	
-	def __gen_conv_2d_mac_array(self, f, name, weights, gen_adder_tree, bram_mult, adder_pipeline):
+	def __gen_conv_2d_mac_array(self, f, name, weights, gen_adder_tree, bram_mult, adder_pipeline, use_dsp):
 		"""Write verilog to implement a traditional convolution
 		   Supports adder tree and pipelining
 		   Supports multipliers using BRAM  """
@@ -149,6 +150,9 @@ class VerilogGenerator():
 		num_cols = weights.shape[1]
 		num_fmaps = weights.shape[2]
 		num_outputs = weights.shape[3]
+		#input_name_array = [] 
+		#fmap_idx_low_array = []
+		#fmap_idx_high_array = []
 		for cur_output in range(num_outputs):
 			for cur_fmap in range(num_fmaps):
 				input_name = "%s_%d" % (self.layer_act_signal_name, cur_fmap)
@@ -212,11 +216,26 @@ class VerilogGenerator():
 							out_value += " * "
 							out_value += "$signed(" + input_name + "[" + str(int(fmap_idx_high-1)) + ":" + str(int(fmap_idx_low)) +"])"
 							lines = "logic signed ["+ str(int(self.accumulator_nbits-1))+":0]" + partial_product + ";"
-							lines = lines + "  assign " + partial_product + " = " + out_value + ";\n"
-							f.writelines(lines)
+							
+							if use_dsp == 0:
+								lines = lines + "  assign " + partial_product + " = " + out_value + ";\n"								
+								f.writelines(lines)
+							else:
+								pass 
+								#f.writelines(lines)
+								#input_name_array.append(input_name) #this is the input_fmap being mult with weight
+								#fmap_idx_low_array.append(fmap_idx_low)
+								#fmap_idx_high_array.append(fmap_idx_high)
+
 		num_delay = 1 # delay for ready and valid signal is by default one
 		for cur_output in range(num_outputs):
 			tree_adder_variables = []
+			input_name_array = []
+			fmap_idx_low_array = []
+			fmap_idx_high_array = []
+			weightage = [] # array of the weights (absolute)
+			weight_sign = [] # array of the sign of weights 
+			weight_no_of_bits = [] # array of no. of bits of the weights 
 			output_name = "conv_mac_%s" % cur_output
 			f.write("logic signed [%d:0] %s;\n" % (self.accumulator_nbits-1, output_name))
 			if gen_adder_tree==0:
@@ -242,6 +261,12 @@ class VerilogGenerator():
 						
 						if gen_adder_tree:
 							tree_adder_variables.append(partial_product)
+							input_name_array.append(input_name)
+							fmap_idx_low_array.append(fmap_idx_low)
+							fmap_idx_high_array.append(fmap_idx_high)
+							weightage.append(abs(weight))
+							weight_sign.append(sign)
+							weight_no_of_bits.append(weight_nbits)
 						else:
 							f.write(partial_product)
 						assigned = True
@@ -252,7 +277,7 @@ class VerilogGenerator():
 					assigned = True
 				else:
 					tree_adder_var_name = "O"+str(cur_output)
-					tree_adder_out,delay_stages = self.generate_tree_adder (f, tree_adder_variables, tree_adder_var_name, self.accumulator_nbits, adder_pipeline)
+					tree_adder_out,delay_stages = self.generate_tree_adder (f, tree_adder_variables, tree_adder_var_name, input_name_array, weightage, weight_sign, weight_no_of_bits, use_dsp, fmap_idx_low_array, fmap_idx_high_array, self.accumulator_nbits, adder_pipeline,)
 					f.writelines("assign conv_mac_"+str(cur_output)+" = " + tree_adder_out)
 					assigned = True
 				if num_delay < delay_stages: # find max delay of the layer
@@ -265,12 +290,14 @@ class VerilogGenerator():
 		self.generate_valid_ready_delay (f,num_delay)
 		self.layer_act_signal_name = "conv_mac"
 		
-	def __gen_depthwise_conv_2d_mac_array(self, f, name, weights, gen_adder_tree, bram_mult, adder_pipeline):
+	def __gen_depthwise_conv_2d_mac_array(self, f, name, weights, gen_adder_tree, bram_mult, adder_pipeline, use_dsp):
 		"""Write verilog to implement a depthwise convolution"""
 		num_rows = weights.shape[0]
 		num_cols = weights.shape[1]
 		num_fmaps = weights.shape[2]
-	
+		#input_name_array = []
+		#fmap_idx_low_array = []
+		#fmap_idx_high_array = []
 		for cur_fmap in range(num_fmaps):
 			input_name = "%s_%d" % (self.layer_act_signal_name, cur_fmap)
 			for cur_row in range(num_rows):
@@ -333,13 +360,26 @@ class VerilogGenerator():
 						out_value += " * "
 						out_value += "$signed(" + input_name + "[" + str(int(fmap_idx_high-1)) + ":" + str(int(fmap_idx_low)) +"])"
 						lines = "logic signed ["+ str(int(self.accumulator_nbits-1))+":0]" + partial_product + ";"
-						lines = lines + "  assign " + partial_product + " = " + out_value + ";\n"
-						f.writelines(lines)
+						if use_dsp ==0:
+							lines = lines + "  assign " + partial_product + " = " + out_value + ";\n"
+							f.writelines(lines)
+						else:
+							pass 
+							# f.writelines(lines)
+							#input_name_array.append(input_name) #this is the input_fmap being mult with weight
+							#fmap_idx_low_array.append(fmap_idx_low)
+							#fmap_idx_high_array.append(fmap_idx_high)
 		
 		num_delay = 1 # delay for ready and valid signal is by default one
 		
 		for cur_fmap in range(num_fmaps):
 			tree_adder_variables = []
+			input_name_array = []
+			fmap_idx_low_array = []
+			fmap_idx_high_array = []
+			weightage = [] # array of the weights (absolute)
+			weight_sign = [] # array of the sign of weights 
+			weight_no_of_bits = [] # array of no. of bits of the weights
 			output_name = "conv_mac_%s" % cur_fmap
 			f.write("logic signed [%d:0] %s;\n" % (self.accumulator_nbits-1, output_name))
 			if gen_adder_tree==0:
@@ -364,6 +404,12 @@ class VerilogGenerator():
 	  
 					if gen_adder_tree:
 						tree_adder_variables.append(partial_product)
+						input_name_array.append(input_name) #this is the input_fmap being mult with weight
+						fmap_idx_low_array.append(fmap_idx_low)
+						fmap_idx_high_array.append(fmap_idx_high)
+						weightage.append(abs(weight))
+						weight_sign.append(sign)
+						weight_no_of_bits.append(weight_nbits)
 					else:
 						f.write(partial_product)
 					assigned = True
@@ -375,7 +421,7 @@ class VerilogGenerator():
 					assigned = True
 				else:
 					tree_adder_var_name = "O"+str(cur_fmap)
-					tree_adder_out,delay_stages = self.generate_tree_adder (f, tree_adder_variables, tree_adder_var_name, self.accumulator_nbits, adder_pipeline)
+					tree_adder_out,delay_stages = self.generate_tree_adder (f, tree_adder_variables, tree_adder_var_name, input_name_array, weightage, weight_sign, weight_no_of_bits, use_dsp, fmap_idx_low_array, fmap_idx_high_array, self.accumulator_nbits, adder_pipeline,)
 					f.writelines("assign conv_mac_"+str(cur_fmap)+" = " + tree_adder_out)
 					assigned = True
 				
@@ -586,12 +632,12 @@ class VerilogGenerator():
 			if layer.op_type == DENSE:
 				self.__gen_dense_mac_array(f, layer.weights)
 			elif layer.op_type == CONV_2D:
-				self.__gen_conv_2d_mac_array(f, str(layer.name), layer.weights, layer.adder_tree, layer.bram_mult, layer.adder_pipeline)
+				self.__gen_conv_2d_mac_array(f, str(layer.name), layer.weights, layer.adder_tree, layer.bram_mult, layer.adder_pipeline, layer.use_dsp)
 			elif layer.op_type == DEPTHWISE_CONV_2D:
-				self.__gen_depthwise_conv_2d_mac_array(f, str(layer.name),  layer.weights, layer.adder_tree, layer.bram_mult, layer.adder_pipeline)
+				self.__gen_depthwise_conv_2d_mac_array(f, str(layer.name),  layer.weights, layer.adder_tree, layer.bram_mult, layer.adder_pipeline, layer.use_dsp)
 			elif layer.op_type == DEPTHWISE_SEPARABLE_CONV_2D:
-				self.__gen_depthwise_conv_2d_mac_array(f, str(layer.name),  layer.weights[0], layer.adder_tree, layer.bram_mult, layer.adder_pipeline)
-				self.__gen_conv_2d_mac_array(f, str(layer.name),  layer.weights[1], layer.adder_tree, layer.bram_mult, layer.adder_pipeline)
+				self.__gen_depthwise_conv_2d_mac_array(f, str(layer.name),  layer.weights[0], layer.adder_tree, layer.bram_mult, layer.adder_pipeline, layer.use_dsp)
+				self.__gen_conv_2d_mac_array(f, str(layer.name),  layer.weights[1], layer.adder_tree, layer.bram_mult, layer.adder_pipeline, layer.use_dsp)
 	
 			if layer.bias is not None:
 				self.__gen_bias_add_array(f, layer.bias)
@@ -659,24 +705,139 @@ class VerilogGenerator():
 		else:
 			f.writelines("always @(posedge clk) " + str (adder_out) + " <= " + str (adder_inp1) + str (adder_inp2) + " ;\n ")
 	
-	def generate_tree_adder (self, f, tree_adder_variables, tree_adder_var_name, adder_bitwidth=32, pipeline=0):
+	def generate_tree_adder (self, f, tree_adder_variables, tree_adder_var_name, input_name_array, weightage, weight_sign, weight_no_of_bits, use_dsp, fmap_idx_low_array, fmap_idx_high_array, adder_bitwidth=32, pipeline=0):
 		'''generates an adder tree by taking a list input'''
 		stage = 0
-		adder_out_vars_tmp = tree_adder_variables
-		
+		adder_out_vars_tmp = tree_adder_variables  # these are the partial product
+		weightage_tmp = weightage
+		weight_sign_tmp = weight_sign
+		weight_no_of_bits = weight_no_of_bits
+		input_name_array_tmp = input_name_array
+		k = 20  
+			
+
+		if len(adder_out_vars_tmp) % 4 == 1:
+			input_name_array_tmp.append("zero_number")
+			weightage.append("0")
+			weight_sign.append(" ")
+			weight_no_of_bits.append("9")	
+			fmap_idx_low_array.append(0)
+			fmap_idx_high_array.append(9)
+			input_name_array_tmp.append("zero_number")
+			weightage.append("0")
+			weight_sign.append(" ")
+			weight_no_of_bits.append("9")		
+			fmap_idx_low_array.append(0)
+			fmap_idx_high_array.append(9)
+			input_name_array_tmp.append("zero_number")
+			weightage.append("0")
+			weight_sign.append(" ")
+			weight_no_of_bits.append("9")			
+			fmap_idx_low_array.append(0)
+			fmap_idx_high_array.append(9)		
+		if len(adder_out_vars_tmp) % 4 == 2:
+			input_name_array_tmp.append("zero_number")
+			input_name_array_tmp.append("zero_number")
+			weightage.append("0")
+			weight_sign.append(" ")
+			weight_no_of_bits.append("9")
+			fmap_idx_low_array.append(0)
+			fmap_idx_high_array.append(9)
+			weightage.append("0")
+			weight_sign.append(" ")
+			weight_no_of_bits.append("9")
+			fmap_idx_low_array.append(0)
+			fmap_idx_high_array.append(9)
+		if len(adder_out_vars_tmp) % 4 == 3:
+			input_name_array_tmp.append("zero_number")
+			weightage.append("0")
+			weight_sign.append(" ")
+			weight_no_of_bits.append("9")
+			fmap_idx_low_array.append(0)
+			fmap_idx_high_array.append(9)
+		# need to do the same above thing for weight, sign, and no. of bits 
+
+		if len(input_name_array_tmp) ==4:
+			if use_dsp ==1:
+				ax = input_name_array_tmp[0] + "[" + str(int(fmap_idx_high_array[0]-1)) + ":" + str(int(fmap_idx_low_array[0])) +"]"
+				bx = input_name_array_tmp[1] + "[" + str(int(fmap_idx_high_array[1]-1)) + ":" + str(int(fmap_idx_low_array[1])) +"]"
+				cx = input_name_array_tmp[2] + "[" + str(int(fmap_idx_high_array[2]-1)) + ":" + str(int(fmap_idx_low_array[2])) +"]"
+				dx = input_name_array_tmp[3] + "[" + str(int(fmap_idx_high_array[3]-1)) + ":" + str(int(fmap_idx_low_array[3])) +"]"
+				ay = str(weight_sign[0]) + "9" + "'sd" + str(weightage[0])
+				by = str(weight_sign[1]) + "9" + "'sd" + str(weightage[1])
+				cy = str(weight_sign[2]) + "9" + "'sd" + str(weightage[2])
+				dy = str(weight_sign[3]) + "9" + "'sd" + str(weightage[3])
+				#adder_out is chainout/resulta (not)
+				adder_outa = tree_adder_var_name + "_N" + "0" + "_S" + "1"
+				#adder_out_vars_tmp.append("+"+adder_out)
+				f.writelines("logic signed [63:0] chainout_" + "0" + "_" + tree_adder_var_name + "; \n" )
+				f.writelines("logic signed [63:0] " + adder_outa + "; \n")
+				f.writelines(" int_sop_4 int_sop_4_inst_" + "0" + "_" + tree_adder_var_name + "(.clk(clk),.reset(rstn),.mode_sigs(11'd0)," + ".ax(" + str(ax) + ")," + ".ay(" + str(ay) + ")," + ".bx(" + str(bx) + ")," + ".by(" + str(by) + ")," + ".cx(" + str(cx) + ")," + ".cy(" + str(cy) + ")," + ".dx(" + str(dx) + ")," + ".dy(" + str(dy) + ")," + ".chainin(63'd0)," + ".resulta(" + str(adder_outa) + ")," + ".chainout(chainout_" + "0" + "_" + tree_adder_var_name + "));" + "\n")	
+				return adder_outa, stage+2
+			else:
+				pass
+
 		while True:
+			
 			if len(adder_out_vars_tmp) % 2 == 1:  # if it is odd
 				adder_out_vars_tmp.append("0")
 			adder_out_vars = adder_out_vars_tmp
-			adder_out_vars_tmp = []
+			if use_dsp ==0:
+				adder_out_vars_tmp = []
+			else: 
+				if stage ==1:
+					pass
+				else: 
+					adder_out_vars_tmp = []
+			z = 0
+			k = 20 + stage
 			for i in xrange (0, len(adder_out_vars) , 2):
 				adder_inp1 = adder_out_vars[i]
 				adder_inp2 = adder_out_vars[i+1]
-				adder_out  = tree_adder_var_name + "_N" + str(i) + "_S" + str(stage)
-				self.generate_adder (f, adder_inp1, adder_inp2, adder_out, pipeline, adder_bitwidth)
-				adder_out_vars_tmp.append("+"+adder_out)
+				#adder_out  = tree_adder_var_name + "_N" + str(i) + "_S" + str(stage)
+				#adder_out_vars_tmp.append("+"+adder_out)
+			
+				if use_dsp == 0:
+					adder_out  = tree_adder_var_name + "_N" + str(i) + "_S" + str(stage)
+					adder_out_vars_tmp.append("+"+adder_out)
+					self.generate_adder (f, adder_inp1, adder_inp2, adder_out, pipeline, adder_bitwidth)
+				else: 
+					if stage > 1:
+						adder_out  = tree_adder_var_name + "_N" + str(i) + "_S" + str(stage)
+						adder_out_vars_tmp.append("+"+adder_out)
+						self.generate_adder (f, adder_inp1, adder_inp2, adder_out, pipeline, k)
+					else:
+						if stage ==1:
+							pass
+						else: 
+							
+							if z%2 == 0:	
+								ax = input_name_array_tmp[i] + "[" + str(int(fmap_idx_high_array[i]-1)) + ":" + str(int(fmap_idx_low_array[i])) +"]"
+								bx = input_name_array_tmp[i+1] + "[" + str(int(fmap_idx_high_array[i+1]-1)) + ":" + str(int(fmap_idx_low_array[i+1])) +"]"
+								cx = input_name_array_tmp[i+2] + "[" + str(int(fmap_idx_high_array[i+2]-1)) + ":" + str(int(fmap_idx_low_array[i+2])) +"]"
+								dx = input_name_array_tmp[i+3] + "[" + str(int(fmap_idx_high_array[i+3]-1)) + ":" + str(int(fmap_idx_low_array[i+3])) +"]"
+								ay = str(weight_sign[i]) + "9" + "'sd" + str(weightage[i])
+								by = str(weight_sign[i+1]) + "9" + "'sd" + str(weightage[i+1])
+								cy = str(weight_sign[i+2]) + "9" + "'sd" + str(weightage[i+2])
+								dy = str(weight_sign[i+3]) + "9" + "'sd" + str(weightage[i+3])
+								#adder_out is chainout/resulta (not)
+								adder_outa = tree_adder_var_name + "_N" + str(z) + "_S" + "1" 
+								adder_out = adder_outa 
+								adder_out_vars_tmp.append("+"+adder_out)
+								f.writelines("logic signed [63:0] chainout_" + str(z) + "_" + tree_adder_var_name +  "; \n" )
+								f.writelines("logic signed [63:0] " + adder_out + "; \n")
+								f.writelines(" int_sop_4 int_sop_4_inst_" + str(z) + "_" + tree_adder_var_name + "(.clk(clk),.reset(rstn),.mode_sigs(11'd0)," + ".ax(" + str(ax) + ")," + ".ay(" + str(ay) + ")," + ".bx(" + str(bx) + ")," + ".by(" + str(by) + ")," + ".cx(" + str(cx) + ")," + ".cy(" + str(cy) + ")," + ".dx(" + str(dx) + ")," + ".dy(" + str(dy) + ")," + ".chainin(63'd0)," + ".resulta(" + str(adder_outa) + ")," + ".chainout(chainout_" + str(z) + "_" + tree_adder_var_name + "));" + "\n")
+							else:
+								pass
+
+				#adder_out_vars_tmp.append("+"+adder_out)
+				z = z+1
 			if len(adder_out_vars_tmp) <= 1:
 				
+				if stage ==0:
+					flag0 =1
+				elif stage ==1:
+					flag1 =1
 				return adder_out_vars_tmp[0][1:], stage+2
 				break
 			else:

@@ -6,7 +6,9 @@ module MODULE_NAME (
     output logic [OUTPUT_ACT_NBITS-1:0] output_act,
     output logic ready
 );
-logic we; 
+logic we;
+logic [8:0] zero_number; 
+assign zero_number = 9'd0; 
 //NUM_INPUT_FMAPS
 logic [INPUT_ACT_NBITS-1:0] input_act_ff ;
 always_ff @(posedge clk) begin
